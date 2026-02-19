@@ -4,10 +4,24 @@ local launcherPath = "/centcmds.lua"
 
 local files = {
     { remote = repoBase .. "main.lua", localPath = fs.combine(installDir, "main.lua") },
-    { remote = repoBase .. "centcmds.lua", localPath = fs.combine(installDir, "centcmds.lua") }
+    { remote = repoBase .. "centcmds.lua", localPath = fs.combine(installDir, "centcmds.lua") },
+    { remote = repoBase .. "core/boot.lua", localPath = fs.combine(installDir, "core/boot.lua") },
+    { remote = repoBase .. "core/loading.lua", localPath = fs.combine(installDir, "core/loading.lua") },
+    { remote = repoBase .. "gui/ui.lua", localPath = fs.combine(installDir, "gui/ui.lua") },
+    { remote = repoBase .. "gui/desktop.lua", localPath = fs.combine(installDir, "gui/desktop.lua") },
+    { remote = repoBase .. "apps/terminal.lua", localPath = fs.combine(installDir, "apps/terminal.lua") },
+    { remote = repoBase .. "apps/snake.lua", localPath = fs.combine(installDir, "apps/snake.lua") },
+    { remote = repoBase .. "reinstall-centcmds.lua", localPath = "/reinstall-centcmds.lua" },
+    { remote = repoBase .. "delete-centcmds.lua", localPath = "/delete-centcmds.lua" },
+    { remote = repoBase .. "update-centcmds.lua", localPath = "/update-centcmds.lua" }
 }
 
 local function downloadFile(remotePath, localPath)
+    local parentDir = fs.getDir(localPath)
+    if parentDir and parentDir ~= "" then
+        fs.makeDir(parentDir)
+    end
+
     if fs.exists(localPath) then
         fs.delete(localPath)
     end
@@ -54,5 +68,6 @@ launcherFile.close()
 
 print("CompiOS installed.")
 print("Launcher command: centcmds")
+print("Service commands: reinstall-centcmds, update-centcmds, delete-centcmds")
 print("Starting CompiOS...")
 shell.run(fs.combine(installDir, "main.lua"))
