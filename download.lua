@@ -9,6 +9,7 @@ local files = {
     { remote = repoBase .. "core/loading.lua", localPath = fs.combine(installDir, "core/loading.lua") },
     { remote = repoBase .. "gui/ui.lua", localPath = fs.combine(installDir, "gui/ui.lua") },
     { remote = repoBase .. "gui/desktop.lua", localPath = fs.combine(installDir, "gui/desktop.lua") },
+    { remote = repoBase .. "apps/browser.lua", localPath = fs.combine(installDir, "apps/browser.lua") },
     { remote = repoBase .. "apps/terminal.lua", localPath = fs.combine(installDir, "apps/terminal.lua") },
     { remote = repoBase .. "apps/snake.lua", localPath = fs.combine(installDir, "apps/snake.lua") },
     { remote = repoBase .. "reinstall-centcmds.lua", localPath = "/reinstall-centcmds.lua" },

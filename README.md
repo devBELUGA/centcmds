@@ -7,6 +7,7 @@ CompiOS for CC:Tweaked.
 ```text
 .
 |-- apps/
+|   |-- browser.lua
 |   |-- snake.lua
 |   `-- terminal.lua
 |-- core/

@@ -39,10 +39,12 @@ local function run()
     local boot = loadModule("core/boot.lua")
     local loading = loadModule("core/loading.lua")
     local desktop = loadModule("gui/desktop.lua")
+    local browserAppFactory = loadModule("apps/browser.lua")
     local terminalAppFactory = loadModule("apps/terminal.lua")
     local snakeAppFactory = loadModule("apps/snake.lua")
 
     local appList = {
+        { id = "browser", app = browserAppFactory.new(ui) },
         { id = "terminal", app = terminalAppFactory.new(ui) },
         { id = "snake", app = snakeAppFactory.new(ui) }
     }
@@ -71,6 +73,7 @@ local function run()
                     "core/loading.lua",
                     "gui/ui.lua",
                     "gui/desktop.lua",
+                    "apps/browser.lua",
                     "apps/terminal.lua",
                     "apps/snake.lua"
                 }
