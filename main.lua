@@ -1,0 +1,1 @@
+local c=term.getTextColor();term.setTextColor(colors.gray);write("[");term.setTextColor(colors.green);write("Centcmds");term.setTextColor(colors.gray);write("] ");term.setTextColor(colors.green);print("Hello!");term.setTextColor(c)
