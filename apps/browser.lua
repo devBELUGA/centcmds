@@ -259,7 +259,12 @@ local function parseHtmlBlocks(html, baseUrl)
     end
     local function addText(ctx, txt)
         local value = decodeEntities(txt)
-        if ctx.style.whiteSpace ~= "pre" then value = value:gsub("%s+", " ") end
+        if ctx.style.whiteSpace ~= "pre" then
+            value = value:gsub("%s+", " ")
+            if trim(value) == "" then
+                return
+            end
+        end
         if value == "" then return end
         ensure(ctx)
         current.segments[#current.segments + 1] = {
@@ -320,6 +325,144 @@ local function parseHtmlBlocks(html, baseUrl)
     if #blocks == 0 then
         blocks[1] = { align = "left", bg = colors.white, segments = { { text = "(empty page)", fg = colors.gray, bg = colors.white } } }
     end
+    return blocks
+end
+
+local function extractPlainText(html)
+    local cleaned = tostring(html or "")
+    cleaned = cleaned:gsub("\r", "")
+    cleaned = cleaned:gsub("<!--.-%-%->", " ")
+    cleaned = cleaned:gsub("<[sS][cC][rR][iI][pP][tT][^>]*>.-</[sS][cC][rR][iI][pP][tT]>", " ")
+    cleaned = cleaned:gsub("<[sS][tT][yY][lL][eE][^>]*>.-</[sS][tT][yY][lL][eE]>", " ")
+    cleaned = cleaned:gsub("<[nN][oO][sS][cC][rR][iI][pP][tT][^>]*>.-</[nN][oO][sS][cC][rR][iI][pP][tT]>", " ")
+    cleaned = cleaned:gsub("<[bB][rR]%s*/?>", "\n")
+    cleaned = cleaned:gsub("</[pP]>", "\n")
+    cleaned = cleaned:gsub("</[dD][iI][vV]>", "\n")
+    cleaned = cleaned:gsub("</[hH][1-6]>", "\n")
+    cleaned = cleaned:gsub("</[lL][iI]>", "\n")
+    cleaned = cleaned:gsub("<[^>]+>", " ")
+    cleaned = decodeEntities(cleaned)
+    cleaned = cleaned:gsub("[ \t]+", " ")
+    cleaned = cleaned:gsub("\n%s+", "\n")
+    cleaned = cleaned:gsub("\n\n+", "\n\n")
+    return trim(cleaned)
+end
+
+local function extractTitle(html)
+    local title = tostring(html or ""):match("<[tT][iI][tT][lL][eE][^>]*>(.-)</[tT][iI][tT][lL][eE]>")
+    if not title then
+        return nil
+    end
+    title = decodeEntities(title:gsub("<[^>]+>", " "))
+    title = trim(title:gsub("%s+", " "))
+    if title == "" then
+        return nil
+    end
+    return title
+end
+
+local function extractDescription(html)
+    local raw = tostring(html or "")
+    local d1 = raw:match("<[mM][eE][tT][aA][^>]-name%s*=%s*[\"']description[\"'][^>]-content%s*=%s*[\"'](.-)[\"'][^>]->")
+    local d2 = raw:match("<[mM][eE][tT][aA][^>]-content%s*=%s*[\"'](.-)[\"'][^>]-name%s*=%s*[\"']description[\"'][^>]->")
+    local desc = d1 or d2
+    if not desc then
+        return nil
+    end
+    desc = decodeEntities(desc)
+    desc = trim(desc:gsub("%s+", " "))
+    if desc == "" then
+        return nil
+    end
+    return desc
+end
+
+local function extractLinks(html, baseUrl, limit)
+    local links = {}
+    local maxLinks = limit or 24
+
+    for href, text in tostring(html or ""):gmatch("<[aA][^>]-href%s*=%s*[\"'](.-)[\"'][^>]*>(.-)</[aA]>") do
+        local label = decodeEntities(text:gsub("<[^>]+>", " "))
+        label = trim(label:gsub("%s+", " "))
+        if label ~= "" then
+            local resolved = resolveUrl(baseUrl, href)
+            if resolved then
+                links[#links + 1] = {
+                    href = resolved,
+                    label = label
+                }
+                if #links >= maxLinks then
+                    break
+                end
+            end
+        end
+    end
+
+    return links
+end
+
+local function countVisibleChars(blocks)
+    local total = 0
+    for i = 1, #blocks do
+        local block = blocks[i]
+        for j = 1, #block.segments do
+            local text = tostring(block.segments[j].text or "")
+            text = text:gsub("%s+", "")
+            total = total + #text
+        end
+    end
+    return total
+end
+
+local function addSimpleBlock(blocks, text, fg, bg, href, align, pre)
+    blocks[#blocks + 1] = {
+        align = align or "left",
+        bg = bg or colors.white,
+        segments = {
+            {
+                text = text,
+                fg = fg or colors.black,
+                bg = bg or colors.white,
+                href = href,
+                whiteSpace = pre and "pre" or "normal"
+            }
+        }
+    }
+end
+
+local function buildFallbackBlocks(html, baseUrl)
+    local blocks = {}
+    local title = extractTitle(html) or baseUrl or "Page"
+    local desc = extractDescription(html)
+    local links = extractLinks(html, baseUrl, 30)
+    local text = extractPlainText(html)
+
+    addSimpleBlock(blocks, title, colors.blue, colors.white, nil, "center")
+    addSimpleBlock(blocks, "Simplified browser view", colors.gray, colors.white)
+    if desc then
+        addSimpleBlock(blocks, desc, colors.black, colors.white)
+    end
+
+    if #links > 0 then
+        addSimpleBlock(blocks, "Links:", colors.purple, colors.white)
+        for i = 1, #links do
+            local link = links[i]
+            local line = tostring(i) .. ". " .. link.label
+            addSimpleBlock(blocks, line, colors.blue, colors.white, link.href)
+        end
+    end
+
+    if text ~= "" then
+        addSimpleBlock(blocks, "Text snapshot:", colors.green, colors.white)
+        local clipped = text
+        if #clipped > 7000 then
+            clipped = clipped:sub(1, 7000) .. "\n...[truncated]"
+        end
+        addSimpleBlock(blocks, clipped, colors.black, colors.white, nil, "left", true)
+    else
+        addSimpleBlock(blocks, "No readable text found on this page.", colors.red, colors.white)
+    end
+
     return blocks
 end
 
@@ -424,7 +567,12 @@ local function loadUrl(state, rawUrl, width)
     end
 
     if isHtmlResponse(headers, body) then
-        state.blocks = parseHtmlBlocks(body, url)
+        local parsed = parseHtmlBlocks(body, url)
+        if countVisibleChars(parsed) < 80 then
+            parsed = buildFallbackBlocks(body, url)
+            state.status = state.status .. " | fallback"
+        end
+        state.blocks = parsed
     else
         state.blocks = { { align = "left", bg = colors.white, segments = { { text = body, fg = colors.black, bg = colors.white, whiteSpace = "pre" } } } }
     end
